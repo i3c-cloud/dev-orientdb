@@ -1,0 +1,38 @@
+FROM jboss/base-jdk:8
+ 
+USER root
+ENV AES_APP_HOME /opt/jboss
+ENV AES_SRC_HOME /src/ews.proto
+
+RUN yum -y install git maven
+
+#git checkout develop
+RUN mkdir /src && cd /src && git clone https://github.com/orientechnologies/orientdb.git \
+	&& cd orientdb \
+	&& mvn clean install -DskipTests
+
+RUN cd /src/orientdb/distribution/target && unzip orientdb-community-3.1.0-SNAPSHOT.zip \
+	&& ln -sf /src/orientdb/distribution/target/orientdb-community-3.1.0-SNAPSHOT /orientdb
+
+ENV PATH /orientdb/bin:$PATH
+
+VOLUME ["/orientdb/backup", "/orientdb/databases", "/orientdb/config"]
+
+WORKDIR /orientdb
+
+#OrientDb binary
+EXPOSE 2424
+
+#OrientDb http
+EXPOSE 2480
+
+#Gremlin server
+EXPOSE 8182
+
+COPY run-orientdb.sh /
+RUN  chmod a+x /run-orientdb.sh && ln -sf /run-orientdb.sh /r
+
+#COPY env.sh /src/env.sh
+
+ENTRYPOINT ["/r"]
+CMD [ "startup"]
